@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pytest
+from loguru import logger
 
 import tests.utils as test_utils
 import weather_model_graphs as wmg
@@ -277,19 +278,30 @@ def test_connect_nodes_nearest_neighbours_more_than_source_nodes(
     n_source, max_num_neighbours, n_expected_edges
 ):
     """`nearest_neighbours` must connect to all available source nodes when
-    `max_num_neighbours` exceeds the number of source nodes."""
+    `max_num_neighbours` exceeds the number of source nodes, and warn once
+    only when the number of neighbours was clamped."""
     G_source = nx.DiGraph()
     for i in range(n_source):
         G_source.add_node(i, pos=np.array([float(i), 0.0]))
     G_target = nx.DiGraph()
     G_target.add_node(0, pos=np.array([0.1, 0.0]))
 
-    G_connect = wmg.create.base.connect_nodes_across_graphs(
-        G_source,
-        G_target,
-        method="nearest_neighbours",
-        max_num_neighbours=max_num_neighbours,
-    )
+    messages = []
+    handler_id = logger.add(messages.append, level="WARNING", format="{message}")
+    try:
+        G_connect = wmg.create.base.connect_nodes_across_graphs(
+            G_source,
+            G_target,
+            method="nearest_neighbours",
+            max_num_neighbours=max_num_neighbours,
+        )
+    finally:
+        logger.remove(handler_id)
+
+    clamped = n_source < max_num_neighbours
+    assert len(messages) == (1 if clamped else 0)
+    if clamped:
+        assert "max_num_neighbours" in messages[0]
 
     assert G_connect.number_of_edges() == n_expected_edges
     # the nearest source nodes are connected, with no duplicates

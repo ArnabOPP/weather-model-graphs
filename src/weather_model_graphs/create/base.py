@@ -511,6 +511,12 @@ def connect_nodes_across_graphs(
         # more neighbours are requested than there are source nodes, so clamp
         # to the number of available source nodes
         num_neighbours = min(max_num_neighbours, len(source_nodes_list))
+        if num_neighbours < max_num_neighbours:
+            logger.warning(
+                f"`max_num_neighbours={max_num_neighbours}` exceeds the number "
+                f"of source nodes ({len(source_nodes_list)}), connecting each "
+                f"target node to {num_neighbours} source node(s) instead"
+            )
 
         def _find_neighbour_node_idxs_in_source_mesh(xy_target):
             # query returns a scalar rather than an array when k == 1
